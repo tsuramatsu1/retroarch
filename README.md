@@ -39,9 +39,7 @@ repository is that port plus extra cores; all of the porting work is his.
 
 3. Open the Homebrew Launcher on the console and pick **RetroArch**.
 
-Games go in `.config/retroarch/roms` and BIOS files in
-`.config/retroarch/system` - PlayStation needs `SCPH1001.bin` there, and Amiga
-needs its Kickstart ROMs.
+BIOS files in`.config/retroarch/system`
 
 ## Using it
 
