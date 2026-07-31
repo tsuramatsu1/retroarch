@@ -7,10 +7,6 @@ The PS5 port of RetroArch itself is **John Tornblom's**, distributed as part of
 [ps5-payload-dev/websrv](https://github.com/ps5-payload-dev/websrv). This
 repository is that port plus extra cores; all of the porting work is his.
 
-**This repository contains only scripts.** The frontend binary, the cores, the
-menu assets and the databases are all built by GitHub Actions and published as a
-single zip - see [Download](#download).
-
 ## Systems included
 
 | Core | System |
