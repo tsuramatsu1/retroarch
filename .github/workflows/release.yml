@@ -4,15 +4,23 @@ name: release
 # frontend, all cores, menu assets, databases - and publishes it as a single zip.
 # Nothing generated is committed, so this workflow is the only source of releases.
 on:
+  # Run it by hand from the Actions tab. Supply a tag for a versioned release;
+  # leave it empty to refresh the rolling "latest" prerelease.
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v1.0.0). Leave empty for a draft with no tag.'
+        description: 'Release tag (e.g. v1.0.0). Leave empty to update the rolling "latest" release.'
         required: false
         default: ''
   push:
+    # A v* tag publishes a versioned release.
     tags:
       - 'v*'
+    # A push to the default branch rebuilds and refreshes "latest", so there is
+    # always a current download and breakage shows up immediately.
+    branches:
+      - master
+      - main
 
 permissions:
   contents: write
@@ -277,17 +285,58 @@ jobs:
           name: RetroArch-PS5
           path: RetroArch-PS5.zip
 
+      # Every successful build publishes something downloadable:
+      #   v* tag, or a manual run given a tag -> a versioned release
+      #   push to the default branch          -> a rolling "latest" prerelease
+      # The rolling one is deleted and recreated so its tag and asset always point
+      # at the commit that produced them; the GitHub API will not move an existing
+      # tag on its own.
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ inputs.tag || github.ref_name }}
-          draft: ${{ inputs.tag == '' }}
-          files: RetroArch-PS5.zip
-          body: |
-            Unzip and copy the `RetroArch` folder to `homebrew/RetroArch` on
-            internal storage or a USB drive, then launch it from the Homebrew
-            Launcher. See the README for BIOS and ROM locations.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          SHA256=$(sha256sum RetroArch-PS5.zip | cut -d' ' -f1)
 
-            Built from this repository's scripts. The PS5 port of RetroArch is
-            John Tornblom's, from ps5-payload-dev/websrv.
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+            TITLE="RetroArch PS5 $TAG"
+            FLAGS=""
+          elif [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+            TAG="${{ github.ref_name }}"
+            TITLE="RetroArch PS5 $TAG"
+            FLAGS=""
+          else
+            TAG="latest"
+            TITLE="RetroArch PS5 (latest build)"
+            FLAGS="--prerelease"
+            gh release delete "$TAG" --cleanup-tag --yes || true
+          fi
+
+          cat > notes.md <<EOF
+          Unzip and copy the \`RetroArch\` folder to \`homebrew/RetroArch\` on
+          internal storage or a USB drive, then launch it from the Homebrew
+          Launcher. ROMs go in \`.config/retroarch/roms\`, BIOS files in
+          \`.config/retroarch/system\`.
+
+          Includes the frontend, 13 cores, menu assets and databases.
+
+          \`\`\`
+          RetroArch-PS5.zip
+          sha256 $SHA256
+          built from ${GITHUB_SHA}
+          \`\`\`
+
+          The PS5 port of RetroArch is John Tornblom's, from
+          [ps5-payload-dev/websrv](https://github.com/ps5-payload-dev/websrv).
+          Core licences vary - see the README; Genesis Plus GX, snes9x2010 and the
+          MAME cores are non-commercial.
+          EOF
+
+          gh release create "$TAG" RetroArch-PS5.zip \
+            --target "${GITHUB_SHA}" \
+            --title "$TITLE" \
+            --notes-file notes.md \
+            $FLAGS
+
+          echo "published: $TAG"
