@@ -1,26 +1,26 @@
-﻿# Logs
+# This repository holds only the build recipes. Everything that makes up the
+# runnable payload - the frontend binary, the cores, the menu assets and the
+# databases - is produced by .github/workflows/release.yml and published as a
+# release zip. Nothing generated is committed.
+
+# Frontend
+retroarch.elf
+retroarch.cfg
+sce_sys/
+
+# Cores, assets, databases and anything else RetroArch keeps under .config.
+# Not committing core binaries also avoids redistributing ones whose licences
+# restrict it (Genesis Plus GX and snes9x2010 are non-commercial, MAME has its
+# own terms).
+.config/
+
+# Release staging
+dist/
+*.zip
+*.tar.gz
+
+# Logs and scratch
 *.log
-.config/retroarch/logs/
-
-# Games and BIOS - never commit these
-.config/retroarch/roms/
-.config/retroarch/system/*
-!.config/retroarch/system/.gitkeep
-
-# Per-user state RetroArch writes at runtime
-.config/retroarch/saves/
-.config/retroarch/states/
-.config/retroarch/screenshots/
-.config/retroarch/thumbnails/
-.config/retroarch/cheats/
-.config/retroarch/config/
-.config/retroarch/playlists/
-*.lpl
-*.srm
-*.state*
-*.bsv
-
-# Backups and scratch
 *.bak
 *.orig
 *.before-*

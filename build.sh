@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-#   Copyright (C) 2024 John Törnblom
+﻿#!/usr/bin/env bash
+#   Copyright (C) 2024 John TÃ¶rnblom
 #
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; see the file COPYING. If not see
 # <http://www.gnu.org/licenses/>.
+#
+# Modified 2026-08-01: only seed retroarch.cfg when none exists, so a rebuild no
+# longer discards accumulated settings. Original from ps5-payload-dev/websrv.
 
 VER="1.21.0"
 URL="https://github.com/libretro/RetroArch/archive/refs/tags/v$VER.tar.gz"

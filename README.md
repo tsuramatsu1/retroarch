@@ -1,11 +1,15 @@
-# RetroArch for jailbroken PS5
+﻿# RetroArch for jailbroken PS5
 
-A ready-to-run RetroArch payload for a jailbroken PS5, with 13 libretro cores
-already built for the console.
+Build recipes for a RetroArch payload for a jailbroken PS5, with 13 libretro
+cores.
 
 The PS5 port of RetroArch itself is **John Tornblom's**, distributed as part of
 [ps5-payload-dev/websrv](https://github.com/ps5-payload-dev/websrv). This
 repository is that port plus extra cores; all of the porting work is his.
+
+**This repository contains only scripts.** The frontend binary, the cores, the
+menu assets and the databases are all built by GitHub Actions and published as a
+single zip - see [Download](#download).
 
 ## Systems included
 
@@ -24,12 +28,21 @@ repository is that port plus extra cores; all of the porting work is his.
 | `puae` / `puae2021` | Amiga |
 | `vice_x64` | Commodore 64 |
 
+## Download
+
+Grab `RetroArch-PS5.zip` from [Releases](../../releases). It contains the whole
+payload - frontend, all 13 cores, menu assets and databases - ready to copy across.
+
+No release yet, or you want the latest build? Open the **Actions** tab, pick the
+most recent *release* run and download the `RetroArch-PS5` artifact. You can also
+start a build yourself from that tab (*release* -> *Run workflow*).
+
 ## Install
 
 1. Jailbreak the console and make sure `websrv` (the Homebrew Launcher) is
    running.
-2. Copy this whole folder to `homebrew/RetroArch` on internal storage or a USB
-   drive, so you end up with one of:
+2. Unzip `RetroArch-PS5.zip` and copy the `RetroArch` folder to `homebrew/` on
+   internal storage or a USB drive, so you end up with one of:
 
    ```
    /data/homebrew/RetroArch
@@ -39,7 +52,9 @@ repository is that port plus extra cores; all of the porting work is his.
 
 3. Open the Homebrew Launcher on the console and pick **RetroArch**.
 
-BIOS files go in `.config/retroarch/system`
+Games go in `.config/retroarch/roms` and BIOS files in
+`.config/retroarch/system` - PlayStation needs `SCPH1001.bin` there, and Amiga
+needs its Kickstart ROMs.
 
 ## Using it
 
@@ -63,8 +78,69 @@ are lost.
 
 ## Rebuilding
 
-The `build-*.sh` scripts rebuild individual cores, and `build.sh` rebuilds the
-frontend. They need the
-[ps5-payload-dev/sdk](https://github.com/ps5-payload-dev/sdk) toolchain with
-`PS5_PAYLOAD_SDK` set. `fetch-assets.sh` and `fetch-databases.sh` refresh the menu
-assets and the game databases.
+| Script | Builds |
+|---|---|
+| `build-sdl.sh` | SDL2 with the DualSense touchpad patch - **run before `build.sh`** |
+| `build.sh` | the frontend, `retroarch.elf` |
+| `build-<core>.sh` | one core each |
+| `fetch-assets.sh`, `fetch-databases.sh` | menu assets and game databases |
+
+`build-sdl.sh` matters: the SDL2 in the prebuilt sysroot is stock, and a frontend
+linked against it has no touchpad pointer. RetroArch derives
+`RETRO_DEVICE_POINTER` from `SDL_GetMouseState()` and its SDL input driver reads
+neither SDL touch nor `SDL_CONTROLLERTOUCHPAD` events, so the fix belongs in SDL -
+see `patches/sdl-ps5-touchpad.py`.
+
+You need the [ps5-payload-dev/sdk](https://github.com/ps5-payload-dev/sdk)
+toolchain plus the prebuilt sysroot, on Ubuntu 24.04 (the SDK pins clang/lld 18):
+
+```sh
+sudo apt-get install -y clang-18 lld-18 llvm-18 llvm-18-dev build-essential wget unzip
+
+wget https://github.com/ps5-payload-dev/sdk/releases/latest/download/ps5-payload-sdk.zip
+sudo unzip -d /opt ps5-payload-sdk.zip
+
+# prebuilt third-party libs (SDL2, ffmpeg, freetype, zlib, ...); extracts over /
+wget https://github.com/ps5-payload-dev/pacbrew-repo/releases/latest/download/ps5-payload-dev.tar.gz
+sudo tar xf ps5-payload-dev.tar.gz -C /
+
+export PS5_PAYLOAD_SDK=/opt/ps5-payload-sdk
+./build-sdl.sh          # patched SDL, before the frontend
+./build.sh              # retroarch.elf
+./build-fceumm.sh       # a core
+./fetch-assets.sh && ./fetch-databases.sh
+```
+
+Two things catch people out: `llvm-18-dev` is missing from the SDK's documented
+prerequisites, and without `llvm-config` every build fails with
+`/llvm-clang++: No such file or directory`. And `-lm`/`-lrt` have nothing to
+resolve to, because math and POSIX-realtime live in libc here - create empty
+archives once with
+`prospero-ar rcs $PS5_PAYLOAD_SDK/target/lib/libm.a` (and `librt.a`).
+
+`.github/workflows/release.yml` does all of the above, so it doubles as a
+working reference.
+
+## Licence
+
+RetroArch and the websrv port are **GPLv3**; the full text is in
+[LICENSE](LICENSE). The files taken from websrv (`build.sh`, `homebrew.js`) keep
+their original copyright and licence headers. `build.sh` has been modified here -
+it no longer overwrites an existing `retroarch.cfg` on rebuild.
+
+The cores are **not** all under the same licence:
+
+| Core | Licence |
+|---|---|
+| `fceumm`, `gambatte`, `mednafen_gba`, `mednafen_psx`, `pcsx_rearmed`, `desmume2015`, `puae`, `puae2021`, `vice_x64` | GPLv2 |
+| `genesis_plus_gx`, `snes9x2010` | Non-commercial |
+| `mame2003_plus`, `mame2010` | MAME licence (non-commercial) |
+
+No binaries are committed to this repository, but **the release zip does contain
+them**, so those terms apply to the releases: the non-commercial cores may not be
+redistributed commercially, and MAME's licence has its own conditions. The GPLv2
+cores are built from the upstream sources named in each `build-*.sh`, which serve
+as the corresponding source.
+
+Bundled fonts and menu assets carry their own licences, included alongside them
+under `.config/retroarch/assets`.

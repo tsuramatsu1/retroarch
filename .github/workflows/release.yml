@@ -1,0 +1,293 @@
+name: release
+
+# Builds the whole payload from the recipes in this repository - patched SDL,
+# frontend, all cores, menu assets, databases - and publishes it as a single zip.
+# Nothing generated is committed, so this workflow is the only source of releases.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0). Leave empty for a draft with no tag.'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  PS5_PAYLOAD_SDK: /opt/ps5-payload-sdk
+
+jobs:
+  # ---------------------------------------------------------------- toolchain
+  # The SDK and sysroot are ~350 MB of downloads. Fetch once, cache, and let the
+  # frontend and core jobs restore it.
+  sdk:
+    runs-on: ubuntu-24.04
+    outputs:
+      key: ${{ steps.k.outputs.key }}
+    steps:
+      - id: k
+        run: echo "key=ps5-sdk-$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore SDK cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/ps5-payload-sdk
+          key: ${{ steps.k.outputs.key }}
+
+      - name: Install prerequisites
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          # llvm-18-dev is missing from the SDK's documented prerequisites. Without
+          # llvm-config the compiler wrappers resolve to an empty path and every
+          # build fails with "/llvm-clang++: No such file or directory".
+          sudo apt-get install -y --no-install-recommends \
+            clang-18 lld-18 llvm-18 llvm-18-dev \
+            build-essential cmake wget unzip pkg-config python3
+
+      - name: Install SDK and prebuilt sysroot
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/ps5-payload-dev/sdk/releases/latest/download/ps5-payload-sdk.zip
+          sudo unzip -q -d /opt ps5-payload-sdk.zip
+          # ~339 MB of third-party libs (SDL2, ffmpeg, freetype, FLAC, zlib and
+          # ~180 more). Extracts over / and lands under /opt/ps5-payload-sdk.
+          wget -q https://github.com/ps5-payload-dev/pacbrew-repo/releases/latest/download/ps5-payload-dev.tar.gz
+          sudo tar xf ps5-payload-dev.tar.gz -C /
+          test -x /opt/ps5-payload-sdk/bin/prospero-clang
+          test -d /opt/ps5-payload-sdk/target/user/homebrew/lib
+
+      - name: Provide libm/librt stubs
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          # Math and POSIX-realtime live in libc on this target, so -lm and -lrt
+          # have nothing to resolve to. Empty archives satisfy the linker and add
+          # no symbols; upstream's own libm.a is a zero-byte placeholder too.
+          for l in libm librt; do
+            f="$PS5_PAYLOAD_SDK/target/lib/$l.a"
+            [ -f "$f" ] || sudo "$PS5_PAYLOAD_SDK/bin/prospero-ar" rcs "$f"
+          done
+
+  # ------------------------------------------------------------------ frontend
+  frontend:
+    needs: sdk
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: /opt/ps5-payload-sdk
+          key: ${{ needs.sdk.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang-18 lld-18 llvm-18 llvm-18-dev build-essential cmake wget unzip \
+            pkg-config python3
+
+      - name: Build patched SDL
+        # Must precede the frontend: it replaces the stock libSDL2.a in the
+        # sysroot with one that feeds touchpad contact into SDL's mouse state.
+        run: |
+          chmod +x build-sdl.sh
+          sudo -E ./build-sdl.sh
+
+      - name: Build frontend
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Verify the frontend
+        run: |
+          set -e
+          test -f retroarch.elf
+          echo "retroarch.elf: $(stat -c%s retroarch.elf) bytes"
+          readelf -h retroarch.elf | grep -qE 'Class:\s+ELF64'
+          readelf -dW retroarch.elf | grep -q 'libkernel_web.sprx'
+          # The touchpad patch has to survive into the linked binary, or the
+          # feature silently disappears from the release.
+          strings retroarch.elf | grep -q 'PS5_TOUCHPAD_MAX_X' \
+            || { echo "error: touchpad patch missing from retroarch.elf"; exit 1; }
+          echo "ok"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend
+          path: |
+            retroarch.elf
+            retroarch.cfg
+            sce_sys/**
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------- cores
+  cores:
+    needs: sdk
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        core:
+          - fceumm
+          - snes9x2010
+          - genesis_plus_gx
+          - gambatte
+          - mednafen_gba
+          - mednafen_psx
+          - pcsx_rearmed
+          - desmume2015
+          - mame2003_plus
+          - mame2010
+          - puae
+          - puae2021
+          - vice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: /opt/ps5-payload-sdk
+          key: ${{ needs.sdk.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang-18 lld-18 llvm-18 llvm-18-dev build-essential wget unzip \
+            pkg-config python3
+
+      - name: Build ${{ matrix.core }}
+        run: |
+          chmod +x ./build-${{ matrix.core }}.sh
+          ./build-${{ matrix.core }}.sh
+
+      - name: Verify the core is loadable on-console
+        run: |
+          set -e
+          so=$(ls .config/retroarch/cores/*_libretro.so)
+          echo "built: $so ($(stat -c%s "$so") bytes)"
+          readelf -h "$so" | grep -qE 'Class:\s+ELF64'
+          readelf -h "$so" | grep -qE 'Type:\s+DYN'
+          # libkernel_sys is absent from websrv's process; a module importing it
+          # fails to load with no error shown on-screen.
+          readelf -dW "$so" | grep -q 'libkernel_web.sprx'
+          ! readelf -dW "$so" | grep -q 'libkernel_sys.sprx'
+          for sym in retro_init retro_run retro_load_game retro_get_system_info; do
+            "$PS5_PAYLOAD_SDK/bin/prospero-nm" -D --defined-only "$so" | grep -qw "$sym"
+          done
+          # A core wanting a hardware GL context cannot run on this build at all.
+          info=$(ls .config/retroarch/cores/*_libretro.info 2>/dev/null || true)
+          if [ -n "$info" ] && grep -q 'hw_render *= *"true"' "$info"; then
+            echo "error: $info declares hw_render = true"; exit 1
+          fi
+          echo "ok"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-${{ matrix.core }}
+          path: .config/retroarch/cores/*_libretro.*
+          if-no-files-found: error
+
+  # ------------------------------------------------------- assets + databases
+  content:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y wget
+      - name: Fetch menu assets and databases
+        run: |
+          chmod +x fetch-assets.sh fetch-databases.sh
+          ./fetch-assets.sh
+          ./fetch-databases.sh
+          du -sh .config/retroarch/assets .config/retroarch/database
+      - uses: actions/upload-artifact@v4
+        with:
+          name: content
+          path: .config/retroarch/
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------- package
+  package:
+    needs: [frontend, cores, content]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect the frontend
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend
+          path: dist/RetroArch
+
+      - name: Collect the cores
+        uses: actions/download-artifact@v4
+        with:
+          pattern: core-*
+          merge-multiple: true
+          path: dist/RetroArch/.config/retroarch/cores
+
+      - name: Collect assets and databases
+        uses: actions/download-artifact@v4
+        with:
+          name: content
+          path: dist/RetroArch/.config/retroarch
+
+      - name: Assemble the payload
+        run: |
+          cd dist/RetroArch
+          cp ../../homebrew.js .
+          cp ../../README.md ../../LICENSE .
+          # RetroArch needs this to exist for BIOS files; git cannot carry an
+          # empty directory, so create it here.
+          mkdir -p .config/retroarch/system .config/retroarch/roms
+          touch .config/retroarch/system/.keep .config/retroarch/roms/.keep
+          chmod +x retroarch.elf
+          echo "=== payload contents ==="
+          ls -l
+          echo "cores: $(ls .config/retroarch/cores/*.so | wc -l)"
+          du -sh .
+
+      - name: Sanity-check the payload before publishing
+        run: |
+          cd dist/RetroArch
+          set -e
+          for f in retroarch.elf retroarch.cfg homebrew.js sce_sys/icon0.png; do
+            test -f "$f" || { echo "missing $f"; exit 1; }
+          done
+          test -d .config/retroarch/assets
+          test -d .config/retroarch/database
+          n=$(ls .config/retroarch/cores/*.so | wc -l)
+          [ "$n" -ge 13 ] || { echo "only $n cores, expected 13"; exit 1; }
+          echo "ok: $n cores, payload complete"
+
+      - name: Create the zip
+        run: |
+          cd dist
+          zip -qr9 ../RetroArch-PS5.zip RetroArch
+          cd ..
+          ls -l RetroArch-PS5.zip
+          echo "sha256: $(sha256sum RetroArch-PS5.zip | cut -d' ' -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RetroArch-PS5
+          path: RetroArch-PS5.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          draft: ${{ inputs.tag == '' }}
+          files: RetroArch-PS5.zip
+          body: |
+            Unzip and copy the `RetroArch` folder to `homebrew/RetroArch` on
+            internal storage or a USB drive, then launch it from the Homebrew
+            Launcher. See the README for BIOS and ROM locations.
+
+            Built from this repository's scripts. The PS5 port of RetroArch is
+            John Tornblom's, from ps5-payload-dev/websrv.
