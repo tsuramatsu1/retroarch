@@ -1,0 +1,26 @@
+﻿# Logs
+*.log
+.config/retroarch/logs/
+
+# Games and BIOS - never commit these
+.config/retroarch/roms/
+.config/retroarch/system/*
+!.config/retroarch/system/.gitkeep
+
+# Per-user state RetroArch writes at runtime
+.config/retroarch/saves/
+.config/retroarch/states/
+.config/retroarch/screenshots/
+.config/retroarch/thumbnails/
+.config/retroarch/cheats/
+.config/retroarch/config/
+.config/retroarch/playlists/
+*.lpl
+*.srm
+*.state*
+*.bsv
+
+# Backups and scratch
+*.bak
+*.orig
+*.before-*
