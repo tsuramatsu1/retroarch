@@ -28,15 +28,6 @@ single zip - see [Download](#download).
 | `puae` / `puae2021` | Amiga |
 | `vice_x64` | Commodore 64 |
 
-## Download
-
-Grab `RetroArch-PS5.zip` from [Releases](../../releases). It contains the whole
-payload - frontend, all 13 cores, menu assets and databases - ready to copy across.
-
-No release yet, or you want the latest build? Open the **Actions** tab, pick the
-most recent *release* run and download the `RetroArch-PS5` artifact. You can also
-start a build yourself from that tab (*release* -> *Run workflow*).
-
 ## Install
 
 1. Jailbreak the console and make sure `websrv` (the Homebrew Launcher) is
@@ -110,16 +101,6 @@ export PS5_PAYLOAD_SDK=/opt/ps5-payload-sdk
 ./build-fceumm.sh       # a core
 ./fetch-assets.sh && ./fetch-databases.sh
 ```
-
-Two things catch people out: `llvm-18-dev` is missing from the SDK's documented
-prerequisites, and without `llvm-config` every build fails with
-`/llvm-clang++: No such file or directory`. And `-lm`/`-lrt` have nothing to
-resolve to, because math and POSIX-realtime live in libc here - create empty
-archives once with
-`prospero-ar rcs $PS5_PAYLOAD_SDK/target/lib/libm.a` (and `librt.a`).
-
-`.github/workflows/release.yml` does all of the above, so it doubles as a
-working reference.
 
 ## Licence
 
