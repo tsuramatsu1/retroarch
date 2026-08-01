@@ -26,7 +26,7 @@ repository is that port plus extra cores; all of the porting work is his.
 
 ## Install
 
-1. Jailbreak the console and make sure `websrv` (the Homebrew Launcher) is
+1. Jailbreak the console and make sure `websrv` is
    running.
 2. Unzip `RetroArch-PS5.zip` and copy the `RetroArch` folder to `homebrew/` on
    internal storage or a USB drive, so you end up with one of:
