@@ -154,6 +154,7 @@ jobs:
           - puae
           - puae2021
           - vice
+          - dosbox_pure
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
