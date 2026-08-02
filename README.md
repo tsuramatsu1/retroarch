@@ -1,9 +1,9 @@
 ﻿# RetroArch for jailbroken PS5
 
-Build recipes for a RetroArch payload for a jailbroken PS5, with 13 libretro
+Build recipes for a RetroArch payload for a jailbroken PS5, with 14 libretro
 cores.
 
-The PS5 port of RetroArch itself is **John Tornblom's**, distributed as part of
+The PS5 port of RetroArch itself is **john-tornblom's**, distributed as part of
 [ps5-payload-dev/websrv](https://github.com/ps5-payload-dev/websrv). This
 repository is that port plus extra cores; all of the porting work is his.
 
@@ -23,11 +23,11 @@ repository is that port plus extra cores; all of the porting work is his.
 | `mame2010` | Arcade (newer romsets) |
 | `puae` / `puae2021` | Amiga |
 | `vice_x64` | Commodore 64 |
+| `dosbox_pure` | MS-DOS / PC |
 
 ## Install
 
-1. Jailbreak the console and make sure `websrv` is
-   running.
+1. Make sure `websrv` is running.
 2. Unzip `RetroArch-PS5.zip` and copy the `RetroArch` folder to `homebrew/` on
    internal storage or a USB drive, so you end up with one of:
 
@@ -69,12 +69,6 @@ are lost.
 | `build.sh` | the frontend, `retroarch.elf` |
 | `build-<core>.sh` | one core each |
 | `fetch-assets.sh`, `fetch-databases.sh` | menu assets and game databases |
-
-`build-sdl.sh` matters: the SDL2 in the prebuilt sysroot is stock, and a frontend
-linked against it has no touchpad pointer. RetroArch derives
-`RETRO_DEVICE_POINTER` from `SDL_GetMouseState()` and its SDL input driver reads
-neither SDL touch nor `SDL_CONTROLLERTOUCHPAD` events, so the fix belongs in SDL -
-see `patches/sdl-ps5-touchpad.py`.
 
 You need the [ps5-payload-dev/sdk](https://github.com/ps5-payload-dev/sdk)
 toolchain plus the prebuilt sysroot, on Ubuntu 24.04 (the SDK pins clang/lld 18):
