@@ -101,7 +101,7 @@ The cores are **not** all under the same licence:
 
 | Core | Licence |
 |---|---|
-| `fceumm`, `gambatte`, `mednafen_gba`, `mednafen_psx`, `pcsx_rearmed`, `desmume2015`, `puae`, `puae2021`, `vice_x64` | GPLv2 |
+| `fceumm`, `gambatte`, `mednafen_gba`, `mednafen_psx`, `pcsx_rearmed`, `desmume2015`, `puae`, `puae2021`, `vice_x64`, `dosbox_pure` | GPLv2 |
 | `genesis_plus_gx`, `snes9x2010` | Non-commercial |
 | `mame2003_plus`, `mame2010` | MAME licence (non-commercial) |
 
