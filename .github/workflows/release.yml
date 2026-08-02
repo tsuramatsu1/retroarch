@@ -1,25 +1,24 @@
 name: release
 
 # Builds the whole payload from the recipes in this repository - patched SDL,
-# frontend, all cores, menu assets, databases - and attaches it to a release as a
-# single zip. Nothing generated is committed, so this workflow is the only source
-# of release binaries.
+# frontend, all cores, menu assets, databases - and publishes it as a single zip.
+# Nothing generated is committed, so this workflow is the only source of releases.
 #
-# Releases are created by hand on GitHub. Publishing one starts the build and the
-# zip is attached to it when the build finishes; pushing to a branch does not
-# build anything.
+# Builds are triggered by hand - pushing to master does not build anything.
 on:
-  release:
-    types: [published]
-  # Manual runs, for checking a build without publishing anything. Give an
-  # existing release tag to attach the zip to it, or leave it empty to build only
-  # and pick the zip up from the run's artifacts.
+  # Run it from the Actions tab. Supply a tag for a versioned release; leave it
+  # empty to refresh the rolling "latest" prerelease.
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing release tag to attach the build to (e.g. v1.0.0). Leave empty to build without publishing.'
+        description: 'Release tag (e.g. v1.0.0). Leave empty to update the rolling "latest" release.'
         required: false
         default: ''
+  push:
+    # A v* tag publishes a versioned release. Tagging is deliberate, so this stays;
+    # ordinary pushes to master are not built.
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -285,40 +284,58 @@ jobs:
           name: RetroArch-PS5
           path: RetroArch-PS5.zip
 
-      # The release already exists - this only attaches the zip to it. Release
-      # creation, its title and its notes stay entirely in the maintainer's hands;
-      # nothing here edits them.
-      - name: Attach the zip to the release
+      # Every successful build publishes something downloadable:
+      #   v* tag, or a manual run given a tag -> a versioned release
+      #   a manual run with the tag left empty -> a rolling "latest" prerelease
+      # The rolling one is deleted and recreated so its tag and asset always point
+      # at the commit that produced them; the GitHub API will not move an existing
+      # tag on its own.
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
           set -e
           SHA256=$(sha256sum RetroArch-PS5.zip | cut -d' ' -f1)
 
-          {
-            echo "### RetroArch-PS5.zip"
-            echo '```'
-            echo "sha256 $SHA256"
-            echo "built from ${GITHUB_SHA}"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          if [ -z "$TAG" ]; then
-            echo "No tag given - built without publishing."
-            echo "The zip is on this run as the RetroArch-PS5 artifact."
-            exit 0
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+            TITLE="RetroArch PS5 $TAG"
+            FLAGS=""
+          elif [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+            TAG="${{ github.ref_name }}"
+            TITLE="RetroArch PS5 $TAG"
+            FLAGS=""
+          else
+            TAG="latest"
+            TITLE="RetroArch PS5 (latest build)"
+            FLAGS="--prerelease"
+            gh release delete "$TAG" --cleanup-tag --yes || true
           fi
 
-          # Fail loudly rather than inventing a release: a typo in the tag would
-          # otherwise create a stray one that nobody is watching.
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            echo "error: no release tagged '$TAG' exists."
-            echo "Create and publish the release on GitHub first, then re-run."
-            exit 1
-          fi
+          cat > notes.md <<EOF
+          Unzip and copy the \`RetroArch\` folder to \`homebrew/RetroArch\` on
+          internal storage or a USB drive, then launch it from the Homebrew
+          Launcher. ROMs go in \`.config/retroarch/roms\`, BIOS files in
+          \`.config/retroarch/system\`.
 
-          # --clobber so re-running a build replaces the asset instead of failing.
-          gh release upload "$TAG" RetroArch-PS5.zip --clobber
+          Includes the frontend, 14 cores, menu assets and databases.
 
-          echo "attached RetroArch-PS5.zip to $TAG"
+          \`\`\`
+          RetroArch-PS5.zip
+          sha256 $SHA256
+          built from ${GITHUB_SHA}
+          \`\`\`
+
+          The PS5 port of RetroArch is John Tornblom's, from
+          [ps5-payload-dev/websrv](https://github.com/ps5-payload-dev/websrv).
+          Core licences vary - see the README; Genesis Plus GX, snes9x2010 and the
+          MAME cores are non-commercial.
+          EOF
+
+          gh release create "$TAG" RetroArch-PS5.zip \
+            --target "${GITHUB_SHA}" \
+            --title "$TITLE" \
+            --notes-file notes.md \
+            $FLAGS
+
+          echo "published: $TAG"
