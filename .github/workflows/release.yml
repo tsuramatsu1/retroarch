@@ -140,15 +140,34 @@ jobs:
       matrix:
         core:
           - fceumm
+          - nestopia
+          - snes9x
           - snes9x2010
-          - genesis_plus_gx
           - gambatte
+          - mgba
           - mednafen_gba
+          - desmume2015
+          - parallel_n64
+          - genesis_plus_gx
+          - picodrive
+          - yabause
+          - mednafen_pce_fast
           - mednafen_psx
           - pcsx_rearmed
-          - desmume2015
+          - opera
+          - mednafen_vb
+          - mednafen_wswan
+          - mednafen_ngp
+          - stella2023
+          - prosystem
+          - handy
+          - virtualjaguar
           - mame2003_plus
           - mame2010
+          - fbneo
+          - fbalpha2012_cps1
+          - fbalpha2012_cps2
+          - fbalpha2012_neogeo
           - puae
           - puae2021
           - vice
@@ -268,7 +287,7 @@ jobs:
           test -d .config/retroarch/assets
           test -d .config/retroarch/database
           n=$(ls .config/retroarch/cores/*.so | wc -l)
-          [ "$n" -ge 14 ] || { echo "only $n cores, expected 14"; exit 1; }
+          [ "$n" -ge 33 ] || { echo "only $n cores, expected 33"; exit 1; }
           echo "ok: $n cores, payload complete"
 
       - name: Create the zip
@@ -318,7 +337,7 @@ jobs:
           Launcher. ROMs go in \`.config/retroarch/roms\`, BIOS files in
           \`.config/retroarch/system\`.
 
-          Includes the frontend, 14 cores, menu assets and databases.
+          Includes the frontend, 33 cores, menu assets and databases.
 
           \`\`\`
           RetroArch-PS5.zip
@@ -328,8 +347,9 @@ jobs:
 
           The PS5 port of RetroArch is John Tornblom's, from
           [ps5-payload-dev/websrv](https://github.com/ps5-payload-dev/websrv).
-          Core licences vary - see the README; Genesis Plus GX, snes9x2010 and the
-          MAME cores are non-commercial.
+          Core licences vary - see the README; Genesis Plus GX, both Snes9x cores,
+          the FB Alpha/FB Neo cores and the MAME-licensed ones (mame2003_plus,
+          mame2010, picodrive) are non-commercial.
           EOF
 
           gh release create "$TAG" RetroArch-PS5.zip \
