@@ -20,7 +20,8 @@ URL="https://github.com/libretro/desmume2015/archive/refs/heads/master.tar.gz"
 INFO="https://raw.githubusercontent.com/libretro/libretro-core-info/refs/heads/master/desmume2015_libretro.info"
 
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "${SCRIPT_PATH}")"
+# This script lives in cores/; the payload it stages into is one level up.
+ROOT_DIR="$(dirname "$(dirname "${SCRIPT_PATH}")")"
 
 if [[ -z "$PS5_PAYLOAD_SDK" ]]; then
     echo "error: PS5_PAYLOAD_SDK is not set"
@@ -51,6 +52,6 @@ fi
 # which the payload sandbox does not permit, so use the ARM interpreter.
 ${MAKE} -f Makefile.libretro DESMUME_JIT=0 || exit 1
 
-mkdir -p "${SCRIPT_DIR}/.config/retroarch/cores" || exit 1
-mv $TEMPDIR/desmume2015-$VER/desmume/desmume2015_libretro.so "${SCRIPT_DIR}/.config/retroarch/cores/" || exit 1
-wget $INFO -O "${SCRIPT_DIR}/.config/retroarch/cores/desmume2015_libretro.info"
+mkdir -p "${ROOT_DIR}/.config/retroarch/cores" || exit 1
+mv $TEMPDIR/desmume2015-$VER/desmume/desmume2015_libretro.so "${ROOT_DIR}/.config/retroarch/cores/" || exit 1
+wget $INFO -O "${ROOT_DIR}/.config/retroarch/cores/desmume2015_libretro.info"

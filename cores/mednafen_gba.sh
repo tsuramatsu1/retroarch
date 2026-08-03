@@ -16,11 +16,12 @@
 # <http://www.gnu.org/licenses/>.
 
 VER="master"
-URL="https://github.com/libretro/gambatte-libretro/archive/refs/heads/master.tar.gz"
-INFO="https://raw.githubusercontent.com/libretro/libretro-core-info/refs/heads/master/gambatte_libretro.info"
+URL="https://github.com/libretro/beetle-gba-libretro/archive/refs/heads/master.tar.gz"
+INFO="https://raw.githubusercontent.com/libretro/libretro-core-info/refs/heads/master/mednafen_gba_libretro.info"
 
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "${SCRIPT_PATH}")"
+# This script lives in cores/; the payload it stages into is one level up.
+ROOT_DIR="$(dirname "$(dirname "${SCRIPT_PATH}")")"
 
 if [[ -z "$PS5_PAYLOAD_SDK" ]]; then
     echo "error: PS5_PAYLOAD_SDK is not set"
@@ -32,12 +33,13 @@ source "${PS5_PAYLOAD_SDK}/toolchain/prospero.sh" || exit 1
 TEMPDIR=$(mktemp -d)
 trap 'rm -rf -- "$TEMPDIR"' EXIT
 
-wget -O $TEMPDIR/gambatte-libretro.tar.gz "${URL}" || exit 1
-tar xf  $TEMPDIR/gambatte-libretro.tar.gz -C $TEMPDIR || exit 1
+wget -O $TEMPDIR/beetle-gba-libretro.tar.gz "${URL}" || exit 1
+tar xf  $TEMPDIR/beetle-gba-libretro.tar.gz -C $TEMPDIR || exit 1
 
-cd $TEMPDIR/gambatte-libretro-$VER || exit 1
-${MAKE} HAVE_NETWORK=0 || exit 1
+cd $TEMPDIR/beetle-gba-libretro-$VER || exit 1
+${MAKE} HAVE_CDROM=0 || exit 1
 
-mkdir -p "${SCRIPT_DIR}/.config/retroarch/cores" || exit 1
-mv $TEMPDIR/gambatte-libretro-$VER/gambatte_libretro.so "${SCRIPT_DIR}/.config/retroarch/cores/" || exit 1
-wget $INFO -O "${SCRIPT_DIR}/.config/retroarch/cores/gambatte_libretro.info"
+mkdir -p "${ROOT_DIR}/.config/retroarch/cores" || exit 1
+ls $TEMPDIR/beetle-gba-libretro-$VER/
+mv $TEMPDIR/beetle-gba-libretro-$VER/mednafen_gba_libretro.so "${ROOT_DIR}/.config/retroarch/cores/" || exit 1
+wget $INFO -O "${ROOT_DIR}/.config/retroarch/cores/mednafen_gba_libretro.info"

@@ -1,0 +1,58 @@
+# Cores whose whole recipe is a declaration: fetch from GitHub, build with the
+# shared flags in _common.sh, verify, stage. A core needing anything more than
+# this - a source patch, a build assertion, an .info fixup - gets its own
+# cores/<name>.sh instead.
+#
+# Pipe-separated. Blank lines and #-comments are ignored. Trailing fields may be
+# left empty.
+#
+#   name | owner/repo | make_dir | makefile | make args | extra CC/CXX defines
+#
+#   name        also names the .so and the .info (<name>_libretro.*)
+#   make_dir    directory holding the libretro makefile, relative to the source
+#               root; empty means the root itself
+#   makefile    empty means Makefile
+#
+# Add a core by adding a row. Nothing else needs to change - build-core.sh and
+# the release workflow both read this file.
+
+# --- Nintendo ---------------------------------------------------------------
+# Nestopia is more accurate than fceumm and heavier; both are kept so a game
+# that misbehaves in one can be run in the other.
+nestopia|libretro/nestopia|libretro|||
+# Current Snes9x. snes9x2010 is the older, lighter fork of the same emulator.
+snes9x|libretro/snes9x|libretro|||
+# Without HAVE_STRTOF_L, mgba defines its own strtof_l and collides with the one
+# libc.a already has in no-locale.o. With it, mgba calls a function the C headers
+# never declare - hence the shim, which supplies the real prototype.
+mgba|libretro/mgba||Makefile.libretro||-DHAVE_STRTOF_L -include ${ROOT_DIR}/shims/ps5-locale.h
+
+# --- Sega -------------------------------------------------------------------
+# Yabause is software-rendered, so expect it to be slow; it is here because
+# nothing else covers the Saturn without a GL context.
+yabause|libretro/yabause|yabause/src/libretro|||
+
+# --- NEC / Bandai / SNK / Nintendo handhelds --------------------------------
+mednafen_pce_fast|libretro/beetle-pce-fast-libretro||||
+mednafen_wswan|libretro/beetle-wswan-libretro||||
+mednafen_ngp|libretro/beetle-ngp-libretro||||
+mednafen_vb|libretro/beetle-vb-libretro||||
+
+# --- Atari ------------------------------------------------------------------
+# Stella's libretro port lives under the emulator tree, not at the repo root.
+stella2023|libretro/stella2023|src/os/libretro|||
+prosystem|libretro/prosystem-libretro||||
+handy|libretro/libretro-handy||||
+virtualjaguar|libretro/virtualjaguar-libretro||||
+
+# --- 3DO --------------------------------------------------------------------
+# Needs a 3DO BIOS in .config/retroarch/system.
+opera|libretro/opera-libretro||||
+
+# --- Arcade -----------------------------------------------------------------
+# Focused splits of FB Alpha: far smaller than fbneo and enough for these
+# romsets on their own. Their libretro makefile is lowercase, and the root
+# Makefile only includes it.
+fbalpha2012_cps1|libretro/fbalpha2012_cps1||makefile.libretro||
+fbalpha2012_cps2|libretro/fbalpha2012_cps2||makefile.libretro||
+fbalpha2012_neogeo|libretro/fbalpha2012_neogeo||makefile.libretro||

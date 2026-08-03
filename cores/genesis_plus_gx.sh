@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#   Copyright (C) 2024 John Törnblom
+#   Copyright (C) 2025 John Törnblom
 #
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -16,11 +16,12 @@
 # <http://www.gnu.org/licenses/>.
 
 VER="master"
-URL="https://github.com/libretro/vice-libretro/archive/refs/heads/master.tar.gz"
-INFO="https://raw.githubusercontent.com/libretro/libretro-core-info/refs/heads/master/vice_x64_libretro.info"
+URL="https://github.com/libretro/Genesis-Plus-GX/archive/refs/heads/master.tar.gz"
+INFO="https://raw.githubusercontent.com/libretro/libretro-core-info/refs/heads/master/genesis_plus_gx_libretro.info"
 
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "${SCRIPT_PATH}")"
+# This script lives in cores/; the payload it stages into is one level up.
+ROOT_DIR="$(dirname "$(dirname "${SCRIPT_PATH}")")"
 
 if [[ -z "$PS5_PAYLOAD_SDK" ]]; then
     echo "error: PS5_PAYLOAD_SDK is not set"
@@ -32,12 +33,13 @@ source "${PS5_PAYLOAD_SDK}/toolchain/prospero.sh" || exit 1
 TEMPDIR=$(mktemp -d)
 trap 'rm -rf -- "$TEMPDIR"' EXIT
 
-wget -O $TEMPDIR/vice-libretro.tar.gz "${URL}" || exit 1
-tar xf  $TEMPDIR/vice-libretro.tar.gz -C $TEMPDIR || exit 1
+wget -O $TEMPDIR/Genesis-Plus-GX.tar.gz "${URL}" || exit 1
+tar xf  $TEMPDIR/Genesis-Plus-GX.tar.gz -C $TEMPDIR || exit 1
 
-cd $TEMPDIR/vice-libretro-$VER || exit 1
-${MAKE} || exit 1
+cd $TEMPDIR/Genesis-Plus-GX-$VER || exit 1
+${MAKE} -f Makefile.libretro HAVE_CDROM=0 || exit 1
 
-mkdir -p "${SCRIPT_DIR}/.config/retroarch/cores" || exit 1
-mv $TEMPDIR/vice-libretro-$VER/vice_x64_libretro.so "${SCRIPT_DIR}/.config/retroarch/cores/" || exit 1
-wget $INFO -O "${SCRIPT_DIR}/.config/retroarch/cores/vice_x64_libretro.info"
+mkdir -p "${ROOT_DIR}/.config/retroarch/cores" || exit 1
+ls $TEMPDIR/Genesis-Plus-GX-$VER/
+mv $TEMPDIR/Genesis-Plus-GX-$VER/genesis_plus_gx_libretro.so "${ROOT_DIR}/.config/retroarch/cores/" || exit 1
+wget $INFO -O "${ROOT_DIR}/.config/retroarch/cores/genesis_plus_gx_libretro.info"

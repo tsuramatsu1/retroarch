@@ -188,8 +188,8 @@ jobs:
 
       - name: Build ${{ matrix.core }}
         run: |
-          chmod +x ./build-${{ matrix.core }}.sh
-          ./build-${{ matrix.core }}.sh
+          chmod +x ./build-core.sh cores/*.sh
+          ./build-core.sh ${{ matrix.core }}
 
       - name: Verify the core is loadable on-console
         run: |

@@ -20,7 +20,8 @@ URL="https://github.com/libretro/mame2010-libretro/archive/refs/heads/master.tar
 INFO="https://raw.githubusercontent.com/libretro/libretro-core-info/refs/heads/master/mame2010_libretro.info"
 
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "${SCRIPT_PATH}")"
+# This script lives in cores/; the payload it stages into is one level up.
+ROOT_DIR="$(dirname "$(dirname "${SCRIPT_PATH}")")"
 
 if [[ -z "$PS5_PAYLOAD_SDK" ]]; then
     echo "error: PS5_PAYLOAD_SDK is not set"
@@ -98,6 +99,6 @@ fi
 # a stub is not an option because zlib is what reads the romset archives.
 ${MAKE} FORCE_DRC_C_BACKEND=1 NOWERROR=1 BUILD_ZLIB=1 || exit 1
 
-mkdir -p "${SCRIPT_DIR}/.config/retroarch/cores" || exit 1
-mv $TEMPDIR/mame2010-libretro-$VER/mame2010_libretro.so "${SCRIPT_DIR}/.config/retroarch/cores/" || exit 1
-wget $INFO -O "${SCRIPT_DIR}/.config/retroarch/cores/mame2010_libretro.info"
+mkdir -p "${ROOT_DIR}/.config/retroarch/cores" || exit 1
+mv $TEMPDIR/mame2010-libretro-$VER/mame2010_libretro.so "${ROOT_DIR}/.config/retroarch/cores/" || exit 1
+wget $INFO -O "${ROOT_DIR}/.config/retroarch/cores/mame2010_libretro.info"

@@ -11,7 +11,8 @@ URL="https://github.com/schellingb/dosbox-pure/archive/refs/heads/master.tar.gz"
 INFO="https://raw.githubusercontent.com/libretro/libretro-core-info/refs/heads/master/dosbox_pure_libretro.info"
 
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "${SCRIPT_PATH}")"
+# This script lives in cores/; the payload it stages into is one level up.
+ROOT_DIR="$(dirname "$(dirname "${SCRIPT_PATH}")")"
 
 if [[ -z "$PS5_PAYLOAD_SDK" ]]; then
     echo "error: PS5_PAYLOAD_SDK is not set"
@@ -69,6 +70,6 @@ if "${PS5_PAYLOAD_SDK}/bin/prospero-nm" -C "$SO" 2>/dev/null | grep -qE 'CacheBl
 fi
 echo "ok: interpreter-only build, no dynarec symbols"
 
-mkdir -p "${SCRIPT_DIR}/.config/retroarch/cores" || exit 1
-mv "$SO" "${SCRIPT_DIR}/.config/retroarch/cores/" || exit 1
-wget $INFO -O "${SCRIPT_DIR}/.config/retroarch/cores/dosbox_pure_libretro.info"
+mkdir -p "${ROOT_DIR}/.config/retroarch/cores" || exit 1
+mv "$SO" "${ROOT_DIR}/.config/retroarch/cores/" || exit 1
+wget $INFO -O "${ROOT_DIR}/.config/retroarch/cores/dosbox_pure_libretro.info"

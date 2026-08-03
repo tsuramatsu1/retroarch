@@ -20,7 +20,8 @@ URL="https://github.com/libretro/pcsx_rearmed/archive/refs/heads/master.tar.gz"
 INFO="https://raw.githubusercontent.com/libretro/libretro-core-info/refs/heads/master/pcsx_rearmed_libretro.info"
 
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "${SCRIPT_PATH}")"
+# This script lives in cores/; the payload it stages into is one level up.
+ROOT_DIR="$(dirname "$(dirname "${SCRIPT_PATH}")")"
 
 if [[ -z "$PS5_PAYLOAD_SDK" ]]; then
     echo "error: PS5_PAYLOAD_SDK is not set"
@@ -56,6 +57,6 @@ grep -q '^#define DO_CPU_CHECKS 0' frontend/main.c || { echo "error: failed to d
 # else in libretro-common's cdrom.c on a BSD target. Disc images are unaffected.
 ${MAKE} -f Makefile.libretro DYNAREC=0 HAVE_PHYSICAL_CDROM=0 || exit 1
 
-mkdir -p "${SCRIPT_DIR}/.config/retroarch/cores" || exit 1
-mv $TEMPDIR/pcsx_rearmed-$VER/pcsx_rearmed_libretro.so "${SCRIPT_DIR}/.config/retroarch/cores/" || exit 1
-wget $INFO -O "${SCRIPT_DIR}/.config/retroarch/cores/pcsx_rearmed_libretro.info"
+mkdir -p "${ROOT_DIR}/.config/retroarch/cores" || exit 1
+mv $TEMPDIR/pcsx_rearmed-$VER/pcsx_rearmed_libretro.so "${ROOT_DIR}/.config/retroarch/cores/" || exit 1
+wget $INFO -O "${ROOT_DIR}/.config/retroarch/cores/pcsx_rearmed_libretro.info"

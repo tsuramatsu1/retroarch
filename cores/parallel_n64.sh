@@ -2,8 +2,7 @@
 #
 # Nintendo 64 (ParaLLEl N64), built as a pure software core.
 
-SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-source "${SCRIPT_DIR}/build-core-common.sh" || exit 1
+source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/_common.sh" || exit 1
 
 CORE=parallel_n64
 REPO=libretro/parallel-n64
@@ -20,8 +19,8 @@ EXTRA_DEFINES="-DHAVE_UNISTD_H"
 # the only plugin built in; leaving the others enabled would also pull in the GL
 # libraries at link time.
 #
-# WITH_DYNAREC is emptied for the same reason build-desmume2015.sh disables its
-# JIT: the recompiler maps executable pages, and the payload sandbox refuses
+# WITH_DYNAREC is emptied for the same reason desmume2015.sh disables its JIT:
+# the recompiler maps executable pages, and the payload sandbox refuses
 # PROT_EXEC. The r4300 interpreter is then the only CPU core compiled in.
 MAKE_ARGS=(
     HAVE_OPENGL=0
@@ -58,7 +57,7 @@ core_post_build() {
 core_post_info() {
     # Upstream's .info describes the GL build. Left alone it would claim a
     # hardware context this core was not built to use, and the hw_render gate in
-    # build-core-common.sh would reject it.
+    # _common.sh would reject it.
     sed -i 's/^hw_render = "true"/hw_render = "false"/' "$1" || return 1
     sed -i '/^required_hw_api = /d' "$1" || return 1
 }

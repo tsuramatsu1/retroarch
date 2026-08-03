@@ -3,8 +3,7 @@
 # Mega Drive, Sega CD, 32X, Master System and Game Gear (PicoDrive). Covers the
 # 32X, which genesis_plus_gx does not.
 
-SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-source "${SCRIPT_DIR}/build-core-common.sh" || exit 1
+source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/_common.sh" || exit 1
 
 CORE=picodrive
 REPO=libretro/picodrive

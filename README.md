@@ -86,17 +86,26 @@ are lost.
 |---|---|
 | `build-sdl.sh` | SDL2 with the DualSense touchpad patch - **run before `build.sh`** |
 | `build.sh` | the frontend, `retroarch.elf` |
-| `build-<core>.sh` | one core each |
-| `build-core-common.sh` | shared fetch/build/verify plumbing the newer core recipes source |
+| `build-core.sh <core>` | one core; `--all` for every core, `--list` for what is available |
 | `fetch-assets.sh`, `fetch-databases.sh` | menu assets and game databases |
 
-Each core lands in `.config/retroarch/cores` next to its `.info` file. The
-recipes that source `build-core-common.sh` refuse to stage a core unless it
-exports the libretro entry points in its **dynamic** symbol table, imports
-`libkernel_web.sprx` (proof the Prospero toolchain was used and not the host
-compiler), does not import `libkernel_sys.sprx` (absent from websrv's process,
-and a module that wants it fails to load with nothing shown on screen), and does
-not declare `hw_render`.
+The core recipes live in `cores/`:
+
+| Path | Holds |
+|---|---|
+| `cores/_table.txt` | the 16 cores that are just a repository and a makefile path - one row each |
+| `cores/<name>.sh` | the 17 that need more: a source patch, a build assertion, an `.info` fixup |
+| `cores/_common.sh` | shared fetch, cross-compile, verify and stage logic |
+
+Adding a straightforward core means adding one row to `cores/_table.txt` -
+`build-core.sh` and the release workflow both read it, so nothing else changes.
+
+Each core lands in `.config/retroarch/cores` next to its `.info` file. Nothing is
+staged unless it exports the libretro entry points in its **dynamic** symbol
+table, imports `libkernel_web.sprx` (proof the Prospero toolchain was used and
+not the host compiler), does not import `libkernel_sys.sprx` (absent from
+websrv's process, and a module that wants it fails to load with nothing shown on
+screen), and does not declare `hw_render`.
 
 You need the [ps5-payload-dev/sdk](https://github.com/ps5-payload-dev/sdk)
 toolchain plus the prebuilt sysroot, on Ubuntu 24.04 (the SDK pins clang/lld 18):
@@ -114,7 +123,7 @@ sudo tar xf ps5-payload-dev.tar.gz -C /
 export PS5_PAYLOAD_SDK=/opt/ps5-payload-sdk
 ./build-sdl.sh          # patched SDL, before the frontend
 ./build.sh              # retroarch.elf
-./build-fceumm.sh       # a core
+./build-core.sh fceumm  # a core (--all for every core)
 ./fetch-assets.sh && ./fetch-databases.sh
 ```
 
@@ -140,8 +149,8 @@ The cores are **not** all under the same licence:
 No binaries are committed to this repository, but **the release zip does contain
 them**, so those terms apply to the releases: the non-commercial cores may not be
 redistributed commercially, and MAME's licence has its own conditions. The GPLv2
-cores are built from the upstream sources named in each `build-*.sh`, which serve
-as the corresponding source.
+cores are built from the upstream sources named in `cores/_table.txt` and
+`cores/<name>.sh`, which serve as the corresponding source.
 
 Bundled fonts and menu assets carry their own licences, included alongside them
 under `.config/retroarch/assets`.

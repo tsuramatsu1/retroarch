@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 #
-# Shared plumbing for the build-<core>.sh recipes: fetch, cross-compile with the
-# Prospero toolchain, prove the result can actually load on the console, then
-# stage it next to its .info file.
+# Shared plumbing for the core recipes: fetch, cross-compile with the Prospero
+# toolchain, prove the result can actually load on the console, then stage it
+# next to its .info file.
 #
-# A recipe sources this file, sets the variables its core needs, and calls
-# build_libretro_core:
+# Most cores never touch this file - they are a row in _table.txt, which
+# ../build-core.sh turns into the variables below. A core needing a source patch,
+# a build assertion or an .info fixup gets its own cores/<name>.sh, which sources
+# this file, sets what it needs and calls build_libretro_core:
 #
-#     SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-#     source "${SCRIPT_DIR}/build-core-common.sh" || exit 1
+#     source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/_common.sh" || exit 1
 #
-#     CORE=stella2023
-#     REPO=libretro/stella2023
-#     MAKE_DIR=src/os/libretro
+#     CORE=picodrive
+#     REPO=libretro/picodrive
+#     MAKEFILE=Makefile.libretro
 #     build_libretro_core || exit 1
 #
 # Variables:
@@ -39,7 +40,9 @@ source "${PS5_PAYLOAD_SDK}/toolchain/prospero.sh" || {
     return 1 2>/dev/null || exit 1
 }
 
-RECIPE_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+# This file lives in cores/; everything stages into the payload root above it.
+CORES_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+ROOT_DIR="$(dirname "$CORES_DIR")"
 
 # Linking is not loading. These three checks are what separates "the makefile
 # produced a file" from "RetroArch on the console can dlopen it".
@@ -85,7 +88,7 @@ build_libretro_core() {
     local makefile="${MAKEFILE:-Makefile}"
     local so="${SO:-${core}_libretro.so}"
     local info="${core}_libretro.info"
-    local stage="${RECIPE_DIR}/.config/retroarch/cores"
+    local stage="${ROOT_DIR}/.config/retroarch/cores"
     local tempdir src out
 
     tempdir=$(mktemp -d) || return 1
